@@ -13,7 +13,7 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      backgroundColor: Colors.amber,
+      backgroundColor: Colors.white,
       currentIndex: 0,
       showSelectedLabels: false,
       showUnselectedLabels: false,

@@ -1,180 +1,208 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:technews/widgets/botton_nav_bar.dart';
+import 'package:technews/screen/login.dart';
+import 'package:technews/services/FirebaseAuthService.dart';
 
+import '../widgets/botton_nav_bar.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
 
   static const routeName = '/profile';
-  final double coverHeight = 280;
-  final double profileHeight = 144;
+
+  @override
+  State<ProfileScreen> createState() => _Profile_ScreenState();
+}
+
+class _Profile_ScreenState extends State<ProfileScreen> {
+  final FirebaseAuthService _authService = FirebaseAuthService();
+
   @override
   Widget build(BuildContext context) {
+    User? currentUser = _authService.getCurrentUser();
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.menu,
-            color: Colors.white,
-          ),
-        ),
-      ),
       bottomNavigationBar: const BottomNavBar(index: 2),
-      extendBodyBehindAppBar: true,
-      body: SingleChildScrollView(
-        child: Stack(
-          children: [
-            // Blakang
-            Container(
-              width: double.infinity,
-              height: 200,
-              color: Colors.amber,
-              child: Image.network(
-                "https://www.karier.mu/blog/wp-content/uploads/2021/12/programmin-990x500.jpg",
-                fit: BoxFit.cover,
-              ),
-            ),
-            // Depan
-            Column(
-              children: <Widget>[
-                SizedBox(
-                  height: 120,
-                ),
-                buildProfileImage(),
-                buildContent(),
-                SizedBox(
-                  height: 20,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser?.uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+          if (!snapshot.hasData) {
+            return Center(
+              child: Text('No data'),
+            );
+          }
+
+          var userData = snapshot.data!.data() as Map<String, dynamic>;
+
+          return Stack(
+            children: [
+              // Front
+              Column(
+                children: <Widget>[
+                  const SizedBox(
+                    height: 120,
+                  ),
+                  const CircleAvatar(
+                      radius: 150 / 2,
+                      backgroundImage: AssetImage('image/user.png')),
+                  Column(
                     children: [
+                      SizedBox(height: 8),
                       Text(
-                        "About",
+                        userData['name'] ?? '',
                         style: TextStyle(
-                            fontSize: 28, fontWeight: FontWeight.bold),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(height: 5),
-                      Text(
-                        textAlign: TextAlign.justify,
-                        softWrap: true,
-                        "Tony Stark adalah seorang jenius ilmuwan, penemu, dan pengusaha sukses. Ia adalah CEO Stark Industries, sebuah perusahaan teknologi miliknya yang terkenal dengan pengembangan teknologi canggih, terutama dalam bidang senjata. Tony Stark dikenal sebagai salah satu otak terbesar di dunia dalam hal teknologi.",
-                        style: TextStyle(fontSize: 18, height: 1.4),
-                      ),
+                      SizedBox(height: 8),
                     ],
                   ),
-                ),
-
-                // buildTop(),
-              ],
-            ),
-          ],
-        ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 30),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Personal Information",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 22,
+                              ),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 30,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: const Color.fromARGB(52, 217, 217, 217),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.mail,
+                                  size: 30,
+                                ),
+                                SizedBox(
+                                  width: 10,
+                                ),
+                                Text(
+                                  userData['email'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 20,
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            color: const Color.fromARGB(52, 217, 217, 217),
+                          ),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.mail,
+                                  size: 30,
+                                ),
+                                SizedBox(
+                                  width: 10,
+                                ),
+                                Text(
+                                  "********",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w300,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        const Divider(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                _authService.signOut();
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => Login()));
+                              },
+                              icon: const Icon(
+                                Icons.logout,
+                                size: 30,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(
+                              width: 20,
+                            ),
+                            Text(
+                              "Log Out",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge!
+                                  .copyWith(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
-
-  Widget buildTop() {
-    final top = coverHeight - profileHeight / 2;
-    final bottom = profileHeight / 2;
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Container(
-          margin: EdgeInsets.only(bottom: bottom),
-          child: buildCoverImage(),
-        ),
-        Positioned(
-          top: top,
-          child: buildProfileImage(),
-        )
-      ],
-    );
-  }
-
-  Widget buildContent() => Column(
-        children: [
-          const SizedBox(height: 8),
-          Text(
-            "Tony Stark",
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Flutter Software Engineer",
-            style: TextStyle(fontSize: 20, color: Colors.black),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              buildSocialIcon(FontAwesomeIcons.slack),
-              const SizedBox(width: 12),
-              buildSocialIcon(FontAwesomeIcons.github),
-              const SizedBox(width: 12),
-              buildSocialIcon(FontAwesomeIcons.twitter),
-              const SizedBox(width: 12),
-              buildSocialIcon(FontAwesomeIcons.linkedin),
-              const SizedBox(width: 12),
-            ],
-          ),
-        ],
-      );
-
-  Widget buildCoverImage() => Container(
-        color: Colors.grey,
-        child: Column(
-          children: [
-            Image.network(
-              "https://www.karier.mu/blog/wp-content/uploads/2021/12/programmin-990x500.jpg",
-              fit: BoxFit.cover,
-            ),
-            Text(
-              "About",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              "Tony Stark adalah seorang jenius ilmuwan, penemu, dan pengusaha sukses. Ia adalah CEO Stark Industries, sebuah perusahaan teknologi miliknya yang terkenal dengan pengembangan teknologi canggih, terutama dalam bidang senjata. Tony Stark dikenal sebagai salah satu otak terbesar di dunia dalam hal teknologi.",
-              style: TextStyle(fontSize: 18, height: 1.4),
-            ),
-          ],
-        ),
-        width: double.infinity,
-        height: coverHeight,
-        padding: EdgeInsets.symmetric(horizontal: 48),
-        // child: Column(
-        //   crossAxisAlignment: CrossAxisAlignment.start,
-        //   children: [
-
-        //   ],
-        // ),
-      );
-
-  Widget buildSocialIcon(IconData icon) => CircleAvatar(
-        radius: 25,
-        child: Material(
-          shape: CircleBorder(),
-          clipBehavior: Clip.hardEdge,
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {},
-            child: Center(child: Icon(icon, size: 32)),
-          ),
-        ),
-      );
-
-  Widget buildProfileImage() => CircleAvatar(
-        radius: profileHeight / 2,
-        // backgroundColor: Colors.grey.shade800,
-        backgroundImage: NetworkImage(
-            "https://wellgroomedgentleman.com/media/images/Tony_Stark_Beard_with_Quiff_Hairstyle.width-800.jpg",
-            scale: 6),
-      );
 }

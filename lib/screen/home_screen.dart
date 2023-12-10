@@ -1,38 +1,80 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:technews/screen/article_screen.dart';
+import 'package:technews/screen/login.dart';
+import 'package:technews/services/firestore_service.dart';
 import 'package:technews/widgets/costum_tag.dart';
 
-import '../models/article_model.dart';
 import '../widgets/botton_nav_bar.dart';
 import '../widgets/image_container.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+  static const routeName = '/Home';
 
-  static const routeName = '/';
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  FirebaseAuth _auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
-    Article article = Article.article[0];
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          onPressed: () {},
+          onPressed: () {
+            _auth.signOut();
+            Navigator.push(context, MaterialPageRoute(builder: (context) => Login()));
+          },
           icon: const Icon(
-            Icons.menu,
+            Icons.logout,
             color: Colors.white,
           ),
         ),
       ),
       bottomNavigationBar: const BottomNavBar(index: 0),
       extendBodyBehindAppBar: true,
-      body: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          _NewsOfTheDay(article: article),
-          _BreakingNews(articles: Article.article),
-        ],
+
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirestoreService().getNews(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else {
+            if (snapshot.hasError) {
+              return Text(snapshot.error.toString());
+            } else {
+              List<QueryDocumentSnapshot> newsList = snapshot.data!.docs;
+
+              return SizedBox(
+                width: double.infinity,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: newsList.length,
+                  itemBuilder: (context, index) {
+                    DocumentSnapshot documentSnapshot = newsList[index];
+
+                    Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
+
+                    return Column(
+                      children: [
+                        _NewsOfTheDay(data: data),
+                        _BreakingNews(dataList: newsList), // Pass the entire list
+                      ],
+                    );
+                  },
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
@@ -41,10 +83,11 @@ class HomeScreen extends StatelessWidget {
 class _BreakingNews extends StatelessWidget {
   const _BreakingNews({
     Key? key,
-    required this.articles,
+    required this.dataList,
   }) : super(key: key);
 
-  final List<Article> articles;
+  final List<QueryDocumentSnapshot> dataList;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -56,7 +99,10 @@ class _BreakingNews extends StatelessWidget {
             children: [
               Text(
                 'Breaking News',
-                style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall!
+                    .copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
@@ -69,46 +115,54 @@ class _BreakingNews extends StatelessWidget {
           SizedBox(
             height: 250,
             child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: articles.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    width: MediaQuery.of(context).size.width * 0.5,
-                    margin: const EdgeInsets.only(right: 10),
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pushNamed(context, ArticleScreen.routeName,
-                            arguments: articles[index]);
-                      },
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ImageContainer(
-                              width: MediaQuery.of(context).size.width * 0.5,
-                              imageUrl: articles[index].imageUrl,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              articles[index].title,
-                              maxLines: 2,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge!
-                                  .copyWith(
-                                      fontWeight: FontWeight.bold, height: 1.5),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                                '${DateTime.now().difference(articles[index].createdAt).inHours} hours ago',
-                                style: Theme.of(context).textTheme.bodySmall!),
-                            const SizedBox(height: 5),
-                            Text('by ${articles[index].author}',
-                                maxLines: 2,
-                                style: Theme.of(context).textTheme.bodySmall!)
-                          ]),
+              scrollDirection: Axis.horizontal,
+              itemCount: dataList.length,
+              itemBuilder: (context, index) {
+                DocumentSnapshot documentSnapshot = dataList[index];
+                Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
+
+                return Container(
+                  width: MediaQuery.of(context).size.width * 0.5,
+                  margin: const EdgeInsets.only(right: 10),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        ArticleScreen.routeName,
+                        arguments: data['id'], // Pass the entire data map
+                      );
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ImageContainer(
+                          width: MediaQuery.of(context).size.width * 0.5,
+                          imageUrl: data['imageUrl'],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          data['title'],
+                          maxLines: 2,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge!
+                              .copyWith(
+                                fontWeight: FontWeight.bold,
+                                height: 1.5,
+                              ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'by ${data['author']}',
+                          maxLines: 2,
+                          style: Theme.of(context).textTheme.bodySmall!,
+                        )
+                      ],
                     ),
-                  );
-                }),
+                  ),
+                );
+              },
+            ),
           )
         ],
       ),
@@ -118,11 +172,11 @@ class _BreakingNews extends StatelessWidget {
 
 class _NewsOfTheDay extends StatelessWidget {
   const _NewsOfTheDay({
-    super.key,
-    required this.article,
-  });
+    Key? key,
+    required this.data,
+  }) : super(key: key);
 
-  final Article article;
+  final Map<String, dynamic> data;
 
   @override
   Widget build(BuildContext context) {
@@ -130,56 +184,68 @@ class _NewsOfTheDay extends StatelessWidget {
       height: MediaQuery.of(context).size.height * 0.45,
       width: double.infinity,
       padding: const EdgeInsets.all(20.0),
-      imageUrl: article.imageUrl,
+      imageUrl: data['imageUrl'],
       child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CostumTag(
-              backgroundColor: Colors.grey.withAlpha(150),
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CostumTag(
+            backgroundColor: Colors.grey.withAlpha(150),
+            children: [
+              Text(
+                'News of the Day',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium!
+                    .copyWith(color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(
+            height: 10,
+          ),
+          Text(
+            data['title'],
+            style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.25,
+                  color: Colors.white,
+                ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                ArticleScreen.routeName,
+                arguments: data['id'], // Pass the entire data map
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              primary: Colors.transparent,
+              elevation: 0,
+            ),
+            child: Row(
               children: [
                 Text(
-                  'News of the Day',
+                  'Learn More',
                   style: Theme.of(context)
                       .textTheme
-                      .bodyMedium!
+                      .bodyLarge!
                       .copyWith(color: Colors.white),
+                ),
+                const SizedBox(
+                  width: 10,
+                ),
+                const Icon(
+                  Icons.arrow_right_alt,
+                  color: Colors.white,
                 ),
               ],
             ),
-            const SizedBox(
-              height: 10,
-            ),
-            Text(
-              article.title,
-              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                  fontWeight: FontWeight.bold,
-                  height: 1.25,
-                  color: Colors.white),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(padding: EdgeInsets.zero),
-              child: Row(
-                children: [
-                  Text(
-                    'Learn More',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge!
-                        .copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  const Icon(
-                    Icons.arrow_right_alt,
-                    color: Colors.white,
-                  ),
-                ],
-              ),
-            )
-          ]),
+          )
+        ],
+      ),
     );
   }
 }
+

@@ -1,23 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:technews/models/article_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:technews/screen/article_screen.dart';
+import 'package:technews/services/firestore_service.dart';
 import 'package:technews/widgets/image_container.dart';
 
 import '../widgets/botton_nav_bar.dart';
 
-class DiscoverScreen extends StatelessWidget {
+class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({Key? key}) : super(key: key);
 
   static const routeName = '/discover';
+
+  @override
+  State<DiscoverScreen> createState() => _DiscoverScreenState();
+}
+
+class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     List<String> tabs = [
-      'Teknology',
+      'Teknologi',
       'Gadget',
-      'Inovasi',
-      'Perangkat',
+      'Software',
       'Internet',
-      'Keamanan'
+      
     ];
 
     return DefaultTabController(
@@ -25,7 +31,7 @@ class DiscoverScreen extends StatelessWidget {
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: Colors.amber,
+          backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
             onPressed: () {},
@@ -52,160 +58,240 @@ class _CategoryNews extends StatelessWidget {
   }) : super(key: key);
 
   final List<String> tabs;
+
   @override
   Widget build(BuildContext context) {
-    final articles = Article.article;
-    return Column(
-      children: [
-        TabBar(
-          isScrollable: true,
-          indicatorColor: Colors.black,
-          tabs: tabs
-              .map(
-                (tab) => Tab(
-                  icon: Text(
-                    tab,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall!
-                        .copyWith(fontWeight: FontWeight.bold),
-                  ),
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirestoreService().getNews(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        } else {
+          List<QueryDocumentSnapshot> dataList = snapshot.data!.docs;
+          return Column(
+            children: [
+              TabBar(
+                isScrollable: true,
+                indicatorColor: Colors.black,
+                tabs: tabs
+                    .map(
+                      (tab) => Tab(
+                        icon: Text(
+                          tab,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall!
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height,
+                child: TabBarView(
+                  children: tabs
+                      .map(
+                        (tab) => ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: dataList.length,
+                          itemBuilder: (context, index) {
+                            DocumentSnapshot documentSnapshot = dataList[index];
+                            Map<String, dynamic> data =
+                                documentSnapshot.data() as Map<String, dynamic>;
+                                
+                            if (data['category'] == tab) {
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    ArticleScreen.routeName,
+                                    arguments: data['id'],
+                                  );
+                                },
+                                child: Row(
+                                  children: [
+                                    ImageContainer(
+                                      width: 80,
+                                      height: 80,
+                                      margin: const EdgeInsets.all(10.0),
+                                      borderRadius: 5,
+                                      imageUrl: data['imageUrl'],
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            data['title'],
+                                            maxLines: 2,
+                                            overflow: TextOverflow.clip,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyLarge!
+                                                .copyWith(
+                                                    fontWeight:
+                                                        FontWeight.bold),
+                                          ),
+                                          const SizedBox(
+                                            height: 10,
+                                          ),
+                                          Text(
+                                            'by ${data['author']}',
+                                            maxLines: 2,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall!,
+                                          )
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              // Return an empty container if the category doesn't match
+                              return Container();
+                            }
+                          },
+                        ),
+                      )
+                      .toList(),
                 ),
               )
-              .toList(),
-        ),
-        SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: TabBarView(
-              children: tabs
-                  .map((tab) => ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: articles.length,
-                        itemBuilder: (context, index) {
-                          return InkWell(
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                ArticleScreen.routeName,
-                                arguments: articles[index],
-                              );
-                            },
-                            child: Row(
-                              children: [
-                                ImageContainer(
-                                    width: 80,
-                                    height: 80,
-                                    margin: const EdgeInsets.all(10.0),
-                                    borderRadius: 5,
-                                    imageUrl: articles[index].imageUrl),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        articles[index].title,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.clip,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyLarge!
-                                            .copyWith(
-                                                fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(
-                                        height: 10,
-                                      ),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.schedule,
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            '${DateTime.now().difference(articles[index].createdAt).inHours} hours ago',
-                                            style:
-                                                const TextStyle(fontSize: 12),
-                                          ),
-                                          const SizedBox(width: 20),
-                                          const Icon(
-                                            Icons.visibility,
-                                            size: 18,
-                                          ),
-                                          Text(
-                                            '${articles[index].views} views',
-                                            style:
-                                                const TextStyle(fontSize: 12),
-                                          ),
-                                        ],
-                                      )
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ))
-                  .toList()),
-        )
-      ],
+            ],
+          );
+        }
+      },
     );
   }
 }
 
-class _DiscoverNews extends StatelessWidget {
+
+class _DiscoverNews extends StatefulWidget {
   const _DiscoverNews({
     Key? key,
   }) : super(key: key);
 
   @override
+  State<_DiscoverNews> createState() => _DiscoverNewsState();
+}
+
+class _DiscoverNewsState extends State<_DiscoverNews> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.25,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Discover',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(
-            height: 5,
-          ),
-          Text('News from all over the world',
-              style: Theme.of(context).textTheme.bodySmall),
-          SizedBox(
-            height: 20,
-          ),
-          TextFormField(
-            decoration: InputDecoration(
-                hintText: 'Search',
-                fillColor: Colors.grey.shade200,
-                filled: true,
-                prefixIcon: const Icon(
-                  Icons.search,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Discover',
+          style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(
+          height: 5,
+        ),
+        Text('News from all over the world',
+            style: Theme.of(context).textTheme.bodySmall),
+        SizedBox(
+          height: 20,
+        ),
+        TextFormField(
+          controller: _searchController,
+          onChanged: (value) {
+            setState(() {});
+          },
+          decoration: InputDecoration(
+              hintText: 'Search',
+              fillColor: Colors.grey.shade200,
+              filled: true,
+              prefixIcon: const Icon(
+                Icons.search,
+                color: Colors.grey,
+              ),
+              suffixIcon: const RotatedBox(
+                quarterTurns: 1,
+                child: Icon(
+                  Icons.tune,
                   color: Colors.grey,
                 ),
-                suffixIcon: const RotatedBox(
-                  quarterTurns: 1,
-                  child: Icon(
-                    Icons.tune,
-                    color: Colors.grey,
-                  ),
-                ),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20.0),
-                    borderSide: BorderSide.none)),
-          )
-        ],
-      ),
+              ),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20.0),
+                  borderSide: BorderSide.none)),
+        ),
+        const SizedBox(height: 20),
+        _searchController.text.isNotEmpty
+            ? StreamBuilder<QuerySnapshot>(
+                stream: FirestoreService().getNewsNew(searchQuery: _searchController.text),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  } else {
+                    List<QueryDocumentSnapshot> dataList = snapshot.data!.docs;
+                    return Column(
+                      children: dataList
+                          .where((data) =>
+                              data['title']
+                                  .toLowerCase()
+                                  .contains(_searchController.text.toLowerCase()))
+                          .map(
+                            (data) => InkWell(
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  ArticleScreen.routeName,
+                                  arguments: data['id'],
+                                );
+                              },
+                              child: Row(
+                                children: [
+                                  ImageContainer(
+                                    width: 80,
+                                    height: 80,
+                                    margin: const EdgeInsets.all(10.0),
+                                    borderRadius: 5,
+                                    imageUrl: data['imageUrl'],
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          data['title'],
+                                          maxLines: 2,
+                                          overflow: TextOverflow.clip,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge!
+                                              .copyWith(fontWeight: FontWeight.bold),
+                                        ),
+                                        const SizedBox(
+                                          height: 10,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  }
+                },
+              )
+            : const SizedBox(), // Show an empty container when the search query is empty
+      ],
     );
   }
 }
